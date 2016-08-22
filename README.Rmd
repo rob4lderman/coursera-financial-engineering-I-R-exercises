@@ -1,0 +1,847 @@
+
+# Coursera: Financial Engineering I: In-Class Examples in R
+
+Course page: [https://www.coursera.org/learn/financial-engineering-1](https://www.coursera.org/learn/financial-engineering-1)
+
+* [Lesson 3.1: Mechanics of the Futures Margin Account](#3.1)
+* [Lesson 3.2: Stock Price Dynamics in the Binomial Model](#3.2)
+* [Lesson 3.4: Option pricing in the 1-period binomial model](#3.4)
+* [Lesson 4.1: Option pricing in the multi-period binomial model](#4.1)
+* [Lesson 4.2: Pricing American Options](#4.2)
+* [Lesson 4.4: Pricing a European Put on a Futures Contract](#4.4)
+* [Lesson 5.1: Pricing a ZCB ](#5.1)
+* [Lesson 5.2: Fixed-Income Derivatives](#5.2)
+* [Lesson 5.3: Caplets, Floorlets, Swaps, Swaptions](#5.3)
+* [Lesson 5.4: The Forward Equations (Elementary Securities)](#5.4)
+* [Lesson 6.1: Black-Derman-Toy (BDT) Model Calibration](#6.1)
+* [Lesson 6.2: Pricing using Calibrated BDT Model](#6.2)
+* [Lesson 6.3: Pricing Defaultable Bonds, Calibrating Hazard Rates](#6.3)
+* [Lesson 6.5: Pricing Credit Default Swaps](#6.5)
+* [Lesson 7.1: Mortgage mathematics](#7.1)
+* [Lesson 7.2: MBS Pass Thru Mathematics](#7.2)
+* [Lesson 7.4: MBS Pass-Thru Sequential CMO with Tranches](#7.4)
+
+```{r}
+
+    source("fin-eng-1.R")
+
+```
+
+<br /><br />
+## <a name="3.1"></a>Lesson 3.1: Mechanics of the Futures Margin Account
+
+### Corn Futures Margin Account
+
+```{r}
+
+    spot.prices <- c(690.25,
+                     693.50,
+                     705.00,
+                     709.50,
+                     719.50,
+                     724.25,
+                     723.00,
+                     732.00,
+                     708.00,
+                     711.50,
+                     725.25,
+                     734.50,
+                     741.00,
+                     741.25,
+                     732.75,
+                     730.50) / 100
+
+    margin.schedule <- buildMarginAccountSchedule( spot.price.vec=spot.prices,
+                                                   num.contracts=5000,
+                                                   initial.margin=1688,
+                                                   maintenance.margin=1250 )
+
+    data.frame(margin.schedule)
+
+    sum(margin.schedule$profit)
+
+
+```
+
+
+### Random Corn Futures Margin Account w/ Margin Call
+
+```{r}
+
+    # (random) spot prices, quoted in dollars per bushel
+    spot.prices <- c(690.25,
+                     686.81,
+                     686.59,
+                     668.51,
+                     662.08,
+                     674.89,
+                     661.97,
+                     709.88,
+                     719.20,
+                     709.36,
+                     725.84,
+                     743.18,
+                     733.77,
+                     743.12,
+                     776.84,
+                     796.17) / 100
+
+    margin.schedule <- buildMarginAccountSchedule( spot.price.vec=spot.prices,
+                                                   num.contracts=5000,
+                                                   initial.margin=1688,
+                                                   maintenance.margin=1250 )
+
+    data.frame(margin.schedule)
+
+    sum(margin.schedule$profit)
+
+```
+
+
+
+<br /><br />
+## <a name="3.2"></a>Lesson 3.2: Stock Price Dynamics in the Binomial Model
+
+```{r}
+
+
+    stock.price.lattice <- buildAssetPriceLattice(S0=100,
+                                                  n=3,
+                                                  u=1.07,
+                                                  d=1/1.07) 
+    stock.price.lattice
+
+```
+
+<br /><br />
+## <a name="3.4"></a>Lesson 3.4: Option pricing in the 1-period binomial model
+
+```{r}
+ 
+    u = 1.07
+    d = 1/u
+    R = 1.01
+    q = (R - d) / (u - d)
+
+    option.price.lattice <- buildOptionPriceLattice(asset.price.lattice=stock.price.lattice,
+                                                    n=1,
+                                                    K=102,
+                                                    R=1.01,
+                                                    q=q,
+                                                    is.call.option=T,
+                                                    is.amer.option=F)
+    option.price.lattice 
+
+
+```
+
+
+<br /><br />
+## <a name="4.1"></a>Lesson 4.1: Option pricing in the multi-period binomial model
+
+```{r}
+
+    option.price.lattice <- buildOptionPriceLattice(asset.price.lattice=stock.price.lattice,
+                                                    n=3,
+                                                    K=100,
+                                                    R=1.01,
+                                                    q=q,
+                                                    is.call.option=T,
+                                                    is.amer.option=F)
+    option.price.lattice 
+
+```
+
+<br /><br />
+## <a name="4.2"></a>Lesson 4.2: Pricing American Options
+
+
+
+```{r}
+
+    option.price.lattice <- buildOptionPriceLattice(asset.price.lattice=stock.price.lattice,
+                                                    n=3,
+                                                    K=100,
+                                                    R=1.01,
+                                                    q=q,
+                                                    is.call.option=F,
+                                                    is.amer.option=T)
+    option.price.lattice 
+
+    shouldExerciseOption( asset.price.lattice = stock.price.lattice,
+                          option.price.lattice = option.price.lattice,
+                          K=100,
+                          is.call.option = F )
+
+```
+
+
+<br /><br />
+## <a name="4.4"></a>Lesson 4.4: Pricing a European Put on a Futures Contract
+
+#### Step 1: Calibrate a Binomial Model via Black-Scholes Parameters
+
+```{r}
+
+    T = 0.50
+    sigma = 20/100
+    n = 10
+    r = 2/100
+    c = 1/100
+
+    bin.model <- calibrateBinomialModel(T=T,
+                                        n=n,
+                                        r=r,
+                                        c=c,
+                                        sigma=sigma)
+
+    rbind(bin.model)
+
+
+```
+
+#### Step 2: Build stock price lattice
+
+```{r}
+
+
+    stock.price.lattice <- buildAssetPriceLattice(S0=100,
+                                                  n=n,
+                                                  u=bin.model$u,
+                                                  d=bin.model$d) 
+    stock.price.lattice
+
+```
+
+
+#### Step 3: Build Futures price lattice
+
+```{r}
+
+    futures.price.lattice <- buildFuturesPriceLattice(asset.price.lattice=stock.price.lattice,
+                                                      n=n,
+                                                      q=bin.model$q)
+
+    futures.price.lattice
+
+```
+
+#### Step 4: Build Put Option price lattice
+
+```{r}
+
+    option.price.lattice <- buildOptionPriceLattice(asset.price.lattice=futures.price.lattice,
+                                                    n=n,
+                                                    K=100,
+                                                    R=bin.model$R,
+                                                    q=bin.model$q,
+                                                    is.call.option=F,
+                                                    is.amer.option=F)
+    option.price.lattice
+
+```
+
+
+
+
+<br /><br />
+## <a name="5.1"></a>Lesson 5.1: Pricing a ZCB 
+
+
+#### Step 1: Build A Sample Short Rate Lattice
+
+```{r}
+
+
+    short.rate.lattice <- buildShortRateLattice(r0=0.06,
+                                                n=5,
+                                                u=1.25,
+                                                d=0.9)
+
+    short.rate.lattice
+
+```
+
+#### Step 2: Price ZCB using short-rate lattice
+
+```{r}
+
+    zcb.price.lattice <- buildZCBPriceLattice(short.rate.lattice = short.rate.lattice,
+                                              face.value = 100,
+                                              n=4,
+                                              q=0.5)
+    zcb.price.lattice
+
+```
+
+
+<br /><br />
+## <a name="5.2"></a>Lesson 5.2: Fixed-Income Derivatives
+
+
+### Pricing a Euro Call Option on ZCB:
+
+```{r}
+
+    option.price.lattice <- buildOptionPriceLattice(asset.price.lattice=zcb.price.lattice,
+                                                    n=2,
+                                                    K=84,
+                                                    short.rate.lattice = short.rate.lattice,
+                                                    q=0.5,
+                                                    is.call.option=T,
+                                                    is.amer.option=F)
+    option.price.lattice 
+
+```
+
+### Pricing an American Put Option on ZCB:
+
+```{r}
+
+    option.price.lattice <- buildOptionPriceLattice(asset.price.lattice=zcb.price.lattice,
+                                                    n=3,
+                                                    K=88,
+                                                    short.rate.lattice = short.rate.lattice,
+                                                    q=0.5,
+                                                    is.call.option=F,
+                                                    is.amer.option=T)
+    option.price.lattice 
+
+    shouldExerciseOption( asset.price.lattice = zcb.price.lattice,
+                          option.price.lattice = option.price.lattice,
+                          K=88, 
+                          is.call.option = F )
+
+```
+
+
+### Pricing a Forward on a Coupon-Bearing Bond:
+
+
+
+#### Step 1: Price the Coupon-Bearing Bond:
+
+```{r}
+
+    bond.price.lattice <- buildBondPriceLattice( short.rate.lattice = short.rate.lattice,
+                                                 face.value = 100,
+                                                 coupon.rate = 0.10,
+                                                 n = 6,
+                                                 q = 0.5)
+    bond.price.lattice
+
+    # ex-coupon at t=4:
+    ex.coupon.price <- bond.price.lattice[,4+1] - 100 * 0.10
+    t(t(ex.coupon.price))
+
+```
+
+#### Step 2: Build Forward Price Lattice:
+
+```{r}
+
+    forward.price.lattice <- buildBinomialPriceLattice( final.price.vec = ex.coupon.price,
+                                                        short.rate.lattice = short.rate.lattice,
+                                                        n = 4,
+                                                        q = 0.5)
+    forward.price.lattice
+
+```
+
+#### Step 3: Price ZCB with T=4 and face value=1:
+
+```{r}
+
+    zcb.price.lattice <- buildZCBPriceLattice(short.rate.lattice = short.rate.lattice,
+                                              face.value = 1,
+                                              n=4,
+                                              q=0.5)
+    zcb.price.lattice
+
+```
+
+#### Step 4: Compute fair-value of forward price
+
+```{r}
+
+    forward.price.lattice[1,1] / zcb.price.lattice[1,1]
+
+```
+
+
+### Pricing a Futures on a Coupon-Bearing Bond:
+
+
+```{r}
+
+    futures.price.lattice <- buildFuturesPriceLattice( final.price.vec = ex.coupon.price,
+                                                       n = 4,
+                                                       q = 0.5)
+    futures.price.lattice
+
+```
+
+
+
+<br /><br />
+## <a name="5.3"></a>Lesson 5.3: Caplets, Floorlets, Swaps, Swaptions
+
+
+### Pricing a Caplet
+
+```{r}
+
+    K <- 0.02
+
+    # final cash flow is discounted (paid in arrears)
+    caplet.final.price <- pmax( (short.rate.lattice[,6] - K) / (1 + short.rate.lattice[,6]), 0 )
+
+    caplet.price.lattice <- buildBinomialPriceLattice(final.price.vec = caplet.final.price,
+                                                      short.rate.lattice = short.rate.lattice,
+                                                      n = 5,  # technically expires at t=6
+                                                      q=0.5)
+    caplet.price.lattice 
+
+```
+
+### Pricing an Interest Rate Swap
+
+```{r}
+
+    swap.price.lattice <- buildInterestRateSwapPriceLattice( short.rate.lattice = short.rate.lattice,
+                                                             n = 5,  # technically expires at t=6
+                                                             q = 0.5,
+                                                             K = 0.05) 
+    swap.price.lattice
+    
+```
+
+### Pricing a Swaption
+
+```{r}
+
+    swaption.price.lattice <- buildOptionPriceLattice(asset.price.lattice = swap.price.lattice,
+                                                      n=3,
+                                                      K=0,
+                                                      short.rate.lattice = short.rate.lattice,
+                                                      q=0.5,
+                                                      is.call.option=T,
+                                                      is.amer.option=F)
+    swaption.price.lattice
+
+```
+
+
+<br /><br />
+## <a name="5.4"></a>Lesson 5.4: The Forward Equations (Elementary Securities)
+
+
+### Building the Elementary Security Price Lattice
+
+```{r}
+
+
+    elem.price.lattice <- buildElementarySecurityPriceLattice(short.rate.lattice = short.rate.lattice,
+                                                              n = 6,
+                                                              q=0.5)
+    elem.price.lattice
+
+```
+
+### Pricing a ZCB using Elementary Prices
+
+```{r}
+
+    # all ZCB bond prices, w/ expirations t=0 thru t=6
+    zcb.prices <- colSums( elem.price.lattice, na.rm=T) * 100
+    zcb.prices
+
+    # spot rates
+    (100/zcb.prices)^(1/0:6) - 1
+
+```
+
+### Pricing a Forward-Start Swap using Elementary Prices
+
+```{r}
+
+    swap.coupon.lattice <- buildInterestRateSwapCouponPaymentLattice( short.rate.lattice = short.rate.lattice,
+                                                                      n = 2,    # technically expires at t=3
+                                                                      forward.start = 1,
+                                                                      K = 0.07) 
+    swap.coupon.lattice
+
+    discounted.swap.coupon.lattice <- swap.coupon.lattice / (1 + short.rate.lattice[1:3,1:3])
+    discounted.swap.coupon.lattice 
+
+    sum( discounted.swap.coupon.lattice * elem.price.lattice[1:3,1:3], na.rm=T ) * 1e6
+
+```
+
+
+<br /><br />
+## <a name="6.1"></a>Lesson 6.1: Black-Derman-Toy (BDT) Model Calibration
+
+```{r}
+
+    q <- 0.5
+    n <- 13
+    s <- c(7.3, 7.62, 8.1, 8.45, 9.2, 9.64, 10.12, 10.45, 10.75, 11.22, 11.55, 11.92, 12.2, 12.32) / 100
+    a <- rep(5.0/100,n+1)       # starting values for a (to be calibrated)
+    b <- rep(0.5/100,n+1)       # fixed b for all time periods
+
+    o <- calibrateBDTShortRateLattice(a=a,
+                                      b=b,
+                                      s=s,
+                                      q=q,
+                                      n=n,     # num periods in calibrated BDT short-rate lattice
+                                      optim.rounds=1)
+    o
+
+```
+
+<br /><br />
+## <a name="6.2"></a>Lesson 6.2: Pricing using Calibrated BDT Model
+
+### Pricing a forward-start swaption
+
+```{r}
+
+    forward.start.swap.lattice <- buildInterestRateSwapPriceLattice( short.rate.lattice=o$bdt,
+                                                                     n=9,   # technically expires at t=10
+                                                                     forward.start=2,
+                                                                     K=11.65/100 )
+    forward.start.swap.lattice 
+
+    swaption.price.lattice <- buildOptionPriceLattice( forward.start.swap.lattice,
+                                                       K=0,
+                                                       n=2,
+                                                       short.rate.lattice=o$bdt )
+    swaption.price.lattice
+    swaption.price.lattice[1,1] * 1e6
+
+```
+**Note**: answer is slightly off from lecture notes, due to diffs in calibration
+
+### Now change b (volatility) to 0.01:
+
+```{r}
+
+    b <- rep(1.0/100,n+1)
+
+    o <- calibrateBDTShortRateLattice(a=a,
+                                      b=b,
+                                      s=s,
+                                      q=q,
+                                      n=n,
+                                      optim.rounds=1)
+    o
+
+
+    forward.start.swap.lattice <- buildInterestRateSwapPriceLattice( short.rate.lattice=o$bdt,
+                                                                     n=9,   # technically expires at t=10
+                                                                     forward.start=2,
+                                                                     K=11.65/100 )
+    forward.start.swap.lattice 
+
+    swaption.price.lattice <- buildOptionPriceLattice( forward.start.swap.lattice,
+                                                       K=0,
+                                                       n=2,
+                                                       short.rate.lattice=o$bdt )
+    swaption.price.lattice
+    swaption.price.lattice[1,1] * 1e6
+
+```
+
+**Note**: answer is slightly off from lecture notes, due to diffs in calibration
+
+
+<br /><br />
+## <a name="6.3"></a>Lesson 6.3: Pricing Defaultable Bonds, Calibrating Hazard Rates
+
+
+### Pricing a Defaultable Bond
+
+
+```{r}
+
+    delta = 1/2             # coupon payments every 6 mos.
+    h <- rep(0.02,10+1)     # fixed hazard rate
+
+    bond.1yr <- buildDefaultableBondSchedule( face.value = 100,
+                                              hazard.rate.vec = h,
+                                              r = 0.05,
+                                              recovery.rate = 0.10,
+                                              coupon.rate = 0.05,
+                                              delta = delta,
+                                              n = 1/delta )
+    
+    data.frame(bond.1yr)
+    
+    bond.1yr.price <- sum(bond.1yr$all.payment)
+    bond.1yr.price
+
+
+    bond.5yr <- buildDefaultableBondSchedule( face.value = 100,
+                                              hazard.rate.vec = h,
+                                              r = 0.05,
+                                              recovery.rate = 0.20,
+                                              coupon.rate = 0.10,
+                                              delta = delta,
+                                              n = 5 / delta )
+    data.frame(bond.5yr)
+    
+    bond.5yr.price <- sum(bond.5yr$all.payment)
+    bond.5yr.price
+
+```
+
+
+### Calibrating Hazard Rates
+
+```{r}
+
+    # these are just random values
+    market.prices <- c(101.2179, 
+                       92.5828, 
+                       107.3675, 
+                       104.0419, 
+                       145.9155)
+
+
+    #
+    # compute 1-5 yr bond prices using the given hazard rates
+    # 
+    computeBondPrices <- function(h) {
+
+        delta = 1/2     # coupon payments every 6 mos.
+
+        bond.1yr <- computeDefaultableBondPricing( face.value = 100,
+                                                   hazard.rate.vec = h,
+                                                   r = 0.05,
+                                                   recovery.rate = 0.10,
+                                                   coupon.rate = 0.05,
+                                                   delta = delta,
+                                                   n = 1/delta )
+
+        bond.2yr <- computeDefaultableBondPricing( face.value = 100,
+                                                   hazard.rate.vec = h,
+                                                   r = 0.05,
+                                                   recovery.rate = 0.25,
+                                                   coupon.rate = 0.02,
+                                                   delta = delta,
+                                                   n = 2 / delta )
+
+        bond.3yr <- computeDefaultableBondPricing( face.value = 100,
+                                                   hazard.rate.vec = h,
+                                                   r = 0.05,
+                                                   recovery.rate = 0.50,
+                                                   coupon.rate = 0.05,
+                                                   delta = delta,
+                                                   n = 3 / delta )
+
+        bond.4yr <- computeDefaultableBondPricing( face.value = 100,
+                                                   hazard.rate.vec = h,
+                                                   r = 0.05,
+                                                   recovery.rate = 0.10,
+                                                   coupon.rate = 0.05,
+                                                   delta = delta,
+                                                   n = 4 / delta )
+
+        bond.5yr <- computeDefaultableBondPricing( face.value = 100,
+                                                   hazard.rate.vec = h,
+                                                   r = 0.05,
+                                                   recovery.rate = 0.20,
+                                                   coupon.rate = 0.10,
+                                                   delta = delta,
+                                                   n = 5 / delta )
+
+        return( list(bond.1yr=bond.1yr, 
+                     bond.2yr=bond.2yr, 
+                     bond.3yr=bond.3yr, 
+                     bond.4yr=bond.4yr, 
+                     bond.5yr=bond.5yr) )
+    }
+
+    # 
+    # define objective function (to be minimized)
+    # 
+    objectiveFn <- function(h) {
+
+        bonds <- computeBondPrices(h)
+
+        model.prices <- c(bonds$bond.1yr$price, 
+                          bonds$bond.2yr$price, 
+                          bonds$bond.3yr$price, 
+                          bonds$bond.4yr$price, 
+                          bonds$bond.5yr$price )
+
+        sq.diffs <- (market.prices - model.prices)^2
+
+        sum(sq.diffs)       # to minimize
+    }
+
+
+
+    o <- optim(par=h,
+               fn=objectiveFn,
+               method = "L-BFGS-B")
+    o
+
+    bonds <- computeBondPrices(o$par)
+
+    rbind(model.prices=c(bonds$bond.1yr$price, bonds$bond.2yr$price, bonds$bond.3yr$price, bonds$bond.4yr$price, bonds$bond.5yr$price), 
+          market.prices)
+
+```
+
+### Calibration using R constrOptim():
+
+```{r}
+
+    # 
+    # using a constraint: allow positive values only.
+    # 
+    # ui %*% theta - ci >= 0
+    # kxp     px1    kx1
+    # 
+    ui <- matrix(1,nrow=1,ncol=length(h))
+    ci <- c(0)
+    ui %*% h - ci   
+
+    o1 <- constrOptim( theta=h,
+                       f=objectiveFn,
+                       grad=NULL,
+                       ui=ui,
+                       ci=ci)
+    o1
+
+    bonds <- computeBondPrices(o1$par)
+
+    rbind(model.prices=c(bonds$bond.1yr$price, bonds$bond.2yr$price, bonds$bond.3yr$price, bonds$bond.4yr$price, bonds$bond.5yr$price), 
+          market.prices)
+
+```
+
+### Calibration using R constrOptim(): Non-decreasing hazard rates
+
+```{r}
+
+    # 
+    # using a constraint: pair-wise compare hazard rates
+    # to ensure non-decreasing
+    # 
+    # ui %*% theta - ci >= 0
+    # kxp     px1    kx1
+    # 
+    ui <- matrix(c(
+                   -1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                    0, -1,  1,  0,  0,  0,  0,  0,  0,  0,  0,
+                    0,  0, -1,  1,  0,  0,  0,  0,  0,  0,  0,
+                    0,  0,  0, -1,  1,  0,  0,  0,  0,  0,  0,
+                    0,  0,  0,  0, -1,  1,  0,  0,  0,  0,  0,
+                    0,  0,  0,  0,  0, -1,  1,  0,  0,  0,  0,
+                    0,  0,  0,  0,  0,  0, -1,  1,  0,  0,  0,
+                    0,  0,  0,  0,  0,  0,  0, -1,  1,  0,  0,
+                    0,  0,  0,  0,  0,  0,  0,  0, -1,  1,  0,
+                    0,  0,  0,  0,  0,  0,  0,  0,  0, -1,  1 ),
+                 nrow = 10,
+                 ncol = 11,
+                 byrow=T)
+    ci <- rep(0,10)
+    h1 <- h + cumsum(rep(0.0001,length(h))) - 0.0005
+    ui %*% h1 - ci   
+
+    o2 <- constrOptim( theta=h1,
+                       f=objectiveFn,
+                       grad=NULL,
+                       ui=ui,
+                       ci=ci)
+    o2
+
+    bonds <- computeBondPrices(o2$par)
+
+    rbind(model.prices=c(bonds$bond.1yr$price, bonds$bond.2yr$price, bonds$bond.3yr$price, bonds$bond.4yr$price, bonds$bond.5yr$price), 
+          market.prices)
+
+```
+
+<br /><br />
+## <a name="6.5"></a>Lesson 6.5: Pricing Credit Default Swaps
+
+```{r}
+
+    # copied from spreadsheet
+    h <- c(0.010070286520099,
+           0.010070286520099,
+           0.010070286520099,
+           0.010070286520099,
+           0.009721551669331,
+           0.009721551669331,
+           0.009721551669331,
+           0.009721551669331,
+           0.009721551669331)      # for time periods t=0 thru n
+
+
+    cds <- buildCDSSchedule( N = 1e6,                 # principal
+                             hazard.rate.vec = h,
+                             n = 8,
+                             delta = 1/4,
+                             r = 0.01,
+                             recovery.rate = 0.45 )
+    data.frame(cds)
+
+```
+
+
+
+<br /><br />
+## <a name="7.1"></a>Lesson 7.1: Mortgage mathematics
+
+
+```{r}
+
+    mort <- buildMortgageSchedule(mortgage.balance = 20000,
+                                  monthly.mortgage.rate = 0.05/12,
+                                  n = 18)
+
+    data.frame(mort)
+
+    computeMortgagePresentValue(monthly.payment = mort$monthly.payment[1],
+                                monthly.market.rate = 0.05/12,
+                                n = 18)
+
+```
+
+<br /><br />
+## <a name="7.2"></a>Lesson 7.2: MBS Pass-Thru Mathematics
+
+```{r}
+
+    cpr.rate <- buildCPRSchedule( psa.multiplier = 100,
+                                  seasoning = 0,
+                                  n = 30 )
+
+    mbs <- buildMBSPassThruSchedule( mortgage.balance = 400,
+                                     monthly.mortgage.rate = 8.125/100/12,
+                                     monthly.passthru.rate = 7.500/100/12,
+                                     cpr.rate = cpr.rate[4:20],
+                                     n = 17) 
+    data.frame(mbs)
+
+    avg.life <- 1 / 12 / 400 * sum( 1:17 * mbs$total.principal )
+    avg.life
+    
+```
+
+<br /><br />
+## <a name="7.4"></a>Lesson 7.4: MBS Pass-Thru Sequential CMO with Tranches 
+
+
+```{r}
+
+    buildMBSTrancheSchedule( mbs=mbs,
+                             tranche.begin.balances = c(194.5, 36, 96.5, 73),
+                             n=17 )
+
+```
