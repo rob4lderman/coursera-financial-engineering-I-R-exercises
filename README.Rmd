@@ -840,8 +840,13 @@ Course page: [https://www.coursera.org/learn/financial-engineering-1](https://ww
 
 ```{r}
 
-    buildMBSTrancheSchedule( mbs=mbs,
-                             tranche.begin.balances = c(194.5, 36, 96.5, 73),
-                             n=17 )
+    tranches <- buildMBSTrancheSchedule( mbs=mbs,
+                                         tranche.begin.balances = c(194.5, 36, 96.5, 73),
+                                         n=17 )
+
+    data.frame(tranches[1])
+    data.frame(tranches[2])
+    data.frame(tranches[3])
+    data.frame(tranches[4])
 
 ```
